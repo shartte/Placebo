@@ -1,3 +1,6 @@
+## 9.3.1
+* Fixed a dedicated server crash.
+
 ## 9.3.0
 * Ported to 1.21
 * Added `StreamCodec` support to `DynamicRegistry`.
