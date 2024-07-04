@@ -1,23 +1,22 @@
 package dev.shadowsoffire.placebo.systems.mixes;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import dev.shadowsoffire.placebo.codec.CodecProvider;
 import dev.shadowsoffire.placebo.codec.PlaceboCodecs;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.alchemy.PotionBrewing;
 import net.minecraft.world.item.crafting.Ingredient;
 
-public class JsonMix<T> extends PotionBrewing.Mix<T> implements CodecProvider<JsonMix<?>> {
+public record JsonMix<T>(Type type, PotionBrewing.Mix<T> mix) implements CodecProvider<JsonMix<?>> {
 
-    public static Codec<JsonMix<?>> CODEC = PlaceboCodecs.enumCodec(Type.class).dispatch("mix_type", JsonMix::getMixType, Type::codec);
+    public static Codec<JsonMix<?>> CODEC = PlaceboCodecs.enumCodec(Type.class).dispatch("mix_type", JsonMix::type, Type::codec);
 
-    protected final Type mixType;
-
-    public JsonMix(T pFrom, Ingredient pIngredient, T pTo, Type mixType) {
-        super(pFrom, pIngredient, pTo);
-        this.mixType = mixType;
+    public JsonMix(Holder<T> pFrom, Ingredient pIngredient, Holder<T> pTo, Type mixType) {
+        this(mixType, new PotionBrewing.Mix<>(pFrom, pIngredient, pTo));
     }
 
     @Override
@@ -25,31 +24,27 @@ public class JsonMix<T> extends PotionBrewing.Mix<T> implements CodecProvider<Js
         return CODEC;
     }
 
-    public Type getMixType() {
-        return this.mixType;
-    }
-
     public static enum Type {
-        CONTAINER(BuiltInRegistries.ITEM.byNameCodec()),
-        POTION(BuiltInRegistries.POTION.byNameCodec());
+        CONTAINER(BuiltInRegistries.ITEM.holderByNameCodec()),
+        POTION(BuiltInRegistries.POTION.holderByNameCodec());
 
-        private final Codec<JsonMix<?>> codec;
+        private final MapCodec<JsonMix<?>> codec;
 
         @SuppressWarnings({ "unchecked", "rawtypes" })
-        private Type(Codec<?> elementCodec) {
-            this.codec = (Codec) forType(this, elementCodec);
+        private <T> Type(Codec<Holder<T>> elementCodec) {
+            this.codec = (MapCodec) forType(this, elementCodec);
         }
 
-        public Codec<JsonMix<?>> codec() {
+        public MapCodec<JsonMix<?>> codec() {
             return this.codec;
         }
 
-        private static <T> Codec<JsonMix<T>> forType(Type type, Codec<T> elementCodec) {
-            return RecordCodecBuilder.create(inst -> inst
+        private static <T> MapCodec<JsonMix<T>> forType(Type type, Codec<Holder<T>> elementCodec) {
+            return RecordCodecBuilder.mapCodec(inst -> inst
                 .group(
-                    elementCodec.fieldOf("from").forGetter(m -> m.from),
-                    Ingredient.CODEC_NONEMPTY.fieldOf("ingredient").forGetter(m -> m.ingredient),
-                    elementCodec.fieldOf("to").forGetter(m -> m.to))
+                    elementCodec.fieldOf("from").forGetter(m -> m.mix.from()),
+                    Ingredient.CODEC_NONEMPTY.fieldOf("ingredient").forGetter(m -> m.mix.ingredient()),
+                    elementCodec.fieldOf("to").forGetter(m -> m.mix.to()))
                 .apply(inst, (from, ingredient, to) -> new JsonMix<>(from, ingredient, to, type))
 
             );

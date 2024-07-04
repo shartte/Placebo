@@ -43,7 +43,7 @@ public class PatreonUtils {
     }
 
     private static Function<Player, ResourceLocation> wingTex(String name) {
-        var supp = Suppliers.memoize(() -> new ResourceLocation(Placebo.MODID, "textures/wings/" + name + ".png"));
+        var supp = Suppliers.memoize(() -> Placebo.loc("textures/wings/" + name + ".png"));
         return player -> supp.get();
     }
 

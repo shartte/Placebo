@@ -3,6 +3,7 @@ package dev.shadowsoffire.placebo.patreon;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URI;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -15,8 +16,9 @@ import org.lwjgl.glfw.GLFW;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import dev.shadowsoffire.placebo.Placebo;
-import dev.shadowsoffire.placebo.packets.PatreonDisableMessage;
 import dev.shadowsoffire.placebo.patreon.PatreonUtils.PatreonParticleType;
+import dev.shadowsoffire.placebo.payloads.PatreonDisablePayload;
+import dev.shadowsoffire.placebo.payloads.PatreonDisablePayload.CosmeticType;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -24,10 +26,9 @@ import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.TickEvent.ClientTickEvent;
-import net.neoforged.neoforge.event.TickEvent.Phase;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 public class TrailsManager {
@@ -40,7 +41,7 @@ public class TrailsManager {
         new Thread(() -> {
             Placebo.LOGGER.info("Loading patreon trails data...");
             try {
-                URL url = new URL("https://raw.githubusercontent.com/Shadows-of-Fire/Placebo/1.16/PatreonTrails.txt");
+                URL url = new URI("https://raw.githubusercontent.com/Shadows-of-Fire/Placebo/1.16/PatreonTrails.txt").toURL();
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()))) {
                     String s;
                     while ((s = reader.readLine()) != null) {
@@ -67,9 +68,9 @@ public class TrailsManager {
     }
 
     @SubscribeEvent
-    public static void clientTick(ClientTickEvent e) {
+    public static void clientTick(ClientTickEvent.Post e) {
         PatreonParticleType t = null;
-        if (e.phase == Phase.END && Minecraft.getInstance().level != null) {
+        if (Minecraft.getInstance().level != null) {
             for (Player player : Minecraft.getInstance().level.players()) {
                 if (!player.isInvisible() && player.tickCount * 3 % 2 == 0 && !DISABLED.contains(player.getUUID()) && (t = TRAILS.get(player.getUUID())) != null) {
                     ClientLevel world = (ClientLevel) player.level();
@@ -84,7 +85,7 @@ public class TrailsManager {
     @SubscribeEvent
     public static void keys(InputEvent.Key e) {
         if (e.getAction() == InputConstants.PRESS && TOGGLE.matches(e.getKey(), e.getScanCode()) && Minecraft.getInstance().getConnection() != null) {
-            PacketDistributor.SERVER.noArg().send(new PatreonDisableMessage(0));
+            PacketDistributor.sendToServer(new PatreonDisablePayload(CosmeticType.TRAILS, Minecraft.getInstance().player.getUUID()));
         }
     }
 }

@@ -11,7 +11,6 @@ import dev.shadowsoffire.placebo.codec.CodecProvider;
 import dev.shadowsoffire.placebo.json.WeightedItemStack;
 import dev.shadowsoffire.placebo.reload.WeightedDynamicRegistry.ILuckyWeighted;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.random.WeightedRandom;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -27,13 +26,13 @@ public record GearSet(int weight, float quality, List<WeightedItemStack> mainhan
 
     public static final Codec<GearSet> CODEC = RecordCodecBuilder.create(inst -> inst.group(
         Codec.intRange(0, Integer.MAX_VALUE).fieldOf("weight").forGetter(ILuckyWeighted::getWeight),
-        ExtraCodecs.strictOptionalField(Codec.floatRange(0, Float.MAX_VALUE), "quality", 0F).forGetter(ILuckyWeighted::getQuality),
-        ExtraCodecs.strictOptionalField(WeightedItemStack.LIST_CODEC, "mainhands", Collections.emptyList()).forGetter(g -> g.mainhands),
-        ExtraCodecs.strictOptionalField(WeightedItemStack.LIST_CODEC, "offhands", Collections.emptyList()).forGetter(g -> g.offhands),
-        ExtraCodecs.strictOptionalField(WeightedItemStack.LIST_CODEC, "boots", Collections.emptyList()).forGetter(g -> g.boots),
-        ExtraCodecs.strictOptionalField(WeightedItemStack.LIST_CODEC, "leggings", Collections.emptyList()).forGetter(g -> g.leggings),
-        ExtraCodecs.strictOptionalField(WeightedItemStack.LIST_CODEC, "chestplates", Collections.emptyList()).forGetter(g -> g.chestplates),
-        ExtraCodecs.strictOptionalField(WeightedItemStack.LIST_CODEC, "helmets", Collections.emptyList()).forGetter(g -> g.helmets),
+        Codec.floatRange(0, Float.MAX_VALUE).optionalFieldOf("quality", 0F).forGetter(ILuckyWeighted::getQuality),
+        WeightedItemStack.LIST_CODEC.optionalFieldOf("mainhands", Collections.emptyList()).forGetter(g -> g.mainhands),
+        WeightedItemStack.LIST_CODEC.optionalFieldOf("offhands", Collections.emptyList()).forGetter(g -> g.offhands),
+        WeightedItemStack.LIST_CODEC.optionalFieldOf("boots", Collections.emptyList()).forGetter(g -> g.boots),
+        WeightedItemStack.LIST_CODEC.optionalFieldOf("leggings", Collections.emptyList()).forGetter(g -> g.leggings),
+        WeightedItemStack.LIST_CODEC.optionalFieldOf("chestplates", Collections.emptyList()).forGetter(g -> g.chestplates),
+        WeightedItemStack.LIST_CODEC.optionalFieldOf("helmets", Collections.emptyList()).forGetter(g -> g.helmets),
         Codec.STRING.listOf().fieldOf("tags").forGetter(g -> g.tags))
         .apply(inst, GearSet::new));
 
@@ -65,6 +64,7 @@ public record GearSet(int weight, float quality, List<WeightedItemStack> mainhan
             case LEGS -> this.leggings;
             case CHEST -> this.chestplates;
             case HEAD -> this.helmets;
+            case BODY -> throw new UnsupportedOperationException("Invalid slot type: " + slot);
         };
     }
 
@@ -75,7 +75,7 @@ public record GearSet(int weight, float quality, List<WeightedItemStack> mainhan
 
     public static class SetPredicate implements Predicate<GearSet> {
 
-        public static final Codec<SetPredicate> CODEC = ExtraCodecs.stringResolverCodec(s -> s.key, SetPredicate::new);
+        public static final Codec<SetPredicate> CODEC = Codec.stringResolver(s -> s.key, SetPredicate::new);
 
         protected final String key;
         protected final Predicate<GearSet> internal;
@@ -87,7 +87,7 @@ public record GearSet(int weight, float quality, List<WeightedItemStack> mainhan
                 this.internal = t -> t.tags.contains(tag);
             }
             else {
-                ResourceLocation id = new ResourceLocation(key);
+                ResourceLocation id = ResourceLocation.parse(key);
                 this.internal = t -> GearSetRegistry.INSTANCE.getKey(t).equals(id);
             }
         }

@@ -10,12 +10,9 @@ import java.util.function.Function;
 
 import com.google.common.collect.BiMap;
 import com.mojang.serialization.Codec;
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
+import com.mojang.serialization.DataResult;
 
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.ExtraCodecs;
-import net.minecraft.util.StringRepresentable;
 
 /**
  * Util class for codecs.
@@ -65,38 +62,23 @@ public class PlaceboCodecs {
      * Creates an enum codec using the lowercase name of the enum values as the keys.
      */
     public static <E extends Enum<E>> Codec<E> enumCodec(Class<E> clazz) {
-        return ExtraCodecs.stringResolverCodec(e -> e.name().toLowerCase(Locale.ROOT), name -> Enum.valueOf(clazz, name.toUpperCase(Locale.ROOT)));
+        return stringResolverCodec(e -> e.name().toLowerCase(Locale.ROOT), name -> Enum.valueOf(clazz, name.toUpperCase(Locale.ROOT)));
     }
 
-    /**
-     * Creates a string resolver codec for a type implementing {@link StringRepresentable}.
-     */
-    public static <T extends StringRepresentable> Codec<T> stringResolver(Function<String, T> decoder) {
-        return ExtraCodecs.stringResolverCodec(StringRepresentable::getSerializedName, decoder);
-    }
-
-    /**
-     * Creates a nullable field codec for use in {@link RecordCodecBuilder}.
-     * <p>
-     * Used to avoid swallowing exceptions during parse errors.
-     *
-     * @deprecated Use {@link ExtraCodecs#strictOptionalField(Codec, String)}
-     */
-    @Deprecated
-    public static <A> MapCodec<Optional<A>> nullableField(Codec<A> elementCodec, String name) {
-        return ExtraCodecs.strictOptionalField(elementCodec, name);
-    }
-
-    /**
-     * Creates a nullable field codec with the given default value for use in {@link RecordCodecBuilder}.
-     * <p>
-     * Used to avoid swallowing exceptions during parse errors.
-     *
-     * @deprecated Use {@link ExtraCodecs#strictOptionalField(Codec, String, Object)}
-     */
-    @Deprecated
-    public static <A> MapCodec<A> nullableField(Codec<A> elementCodec, String name, A defaultValue) {
-        return ExtraCodecs.strictOptionalField(elementCodec, name, defaultValue);
+    public static <E> Codec<E> stringResolverCodec(Function<E, String> p_184406_, Function<String, E> p_184407_) {
+        return Codec.STRING.flatXmap((p_184404_) -> {
+            return Optional.ofNullable(p_184407_.apply(p_184404_)).map(DataResult::success).orElseGet(() -> {
+                return DataResult.error(() -> {
+                    return "Unknown element name:" + p_184404_;
+                });
+            });
+        }, (p_184401_) -> {
+            return Optional.ofNullable(p_184406_.apply(p_184401_)).map(DataResult::success).orElseGet(() -> {
+                return DataResult.error(() -> {
+                    return "Element with unknown name: " + p_184401_;
+                });
+            });
+        });
     }
 
 }

@@ -19,22 +19,20 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.stats.StatFormatter;
 import net.minecraft.stats.StatType;
 import net.minecraft.stats.Stats;
-import net.minecraft.world.Container;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.Attribute;
-import net.minecraft.world.entity.decoration.PaintingVariant;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.alchemy.Potion;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -70,7 +68,7 @@ public class DeferredHelper {
 
     public <T extends Block> DeferredBlock<T> block(String path, Supplier<T> factory) {
         this.register(path, Registries.BLOCK, factory);
-        return DeferredBlock.createBlock(new ResourceLocation(this.modid, path));
+        return DeferredBlock.createBlock(ResourceLocation.fromNamespaceAndPath(this.modid, path));
     }
 
     public <T extends Fluid> DeferredHolder<Fluid, T> fluid(String path, Supplier<T> factory) {
@@ -79,7 +77,7 @@ public class DeferredHelper {
 
     public <T extends Item> DeferredItem<T> item(String path, Supplier<T> factory) {
         this.register(path, Registries.ITEM, factory);
-        return DeferredItem.createItem(new ResourceLocation(this.modid, path));
+        return DeferredItem.createItem(ResourceLocation.fromNamespaceAndPath(this.modid, path));
     }
 
     public <T extends MobEffect> DeferredHolder<MobEffect, T> effect(String path, Supplier<T> factory) {
@@ -91,7 +89,7 @@ public class DeferredHelper {
     }
 
     public Holder<SoundEvent> sound(String path) {
-        return this.sound(path, () -> SoundEvent.createVariableRangeEvent(new ResourceLocation(this.modid, path)));
+        return this.sound(path, () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(this.modid, path)));
     }
 
     public <T extends Potion> DeferredHolder<Potion, T> potion(String path, Supplier<T> factory) {
@@ -101,17 +99,13 @@ public class DeferredHelper {
     public DeferredHolder<Potion, Potion> singlePotion(String path, Supplier<MobEffectInstance> factory) {
         return this.registerDH(path, Registries.POTION, () -> {
             MobEffectInstance inst = factory.get();
-            ResourceLocation key = BuiltInRegistries.MOB_EFFECT.getKey(inst.getEffect());
+            ResourceLocation key = BuiltInRegistries.MOB_EFFECT.getKey(inst.getEffect().value());
             return new Potion(key.toLanguageKey(), inst);
         });
     }
 
     public DeferredHolder<Potion, Potion> multiPotion(String path, Supplier<List<MobEffectInstance>> factory) {
         return this.registerDH(path, Registries.POTION, () -> new Potion(this.modid + "." + path, factory.get().toArray(new MobEffectInstance[0])));
-    }
-
-    public <T extends Enchantment> DeferredHolder<Enchantment, T> enchant(String path, Supplier<T> factory) {
-        return this.registerDH(path, Registries.ENCHANTMENT, factory);
     }
 
     public <U extends Entity, T extends EntityType<U>> DeferredHolder<EntityType<?>, T> entity(String path, Supplier<T> factory) {
@@ -130,15 +124,11 @@ public class DeferredHelper {
         return this.registerDH(path, Registries.MENU, factory);
     }
 
-    public <T extends PaintingVariant> DeferredHolder<PaintingVariant, T> painting(String path, Supplier<T> factory) {
-        return this.registerDH(path, Registries.PAINTING_VARIANT, factory);
-    }
-
-    public <C extends Container, U extends Recipe<C>, T extends RecipeType<U>> DeferredHolder<RecipeType<?>, T> recipe(String path, Supplier<T> factory) {
+    public <C extends RecipeInput, U extends Recipe<C>, T extends RecipeType<U>> DeferredHolder<RecipeType<?>, T> recipe(String path, Supplier<T> factory) {
         return this.registerDH(path, Registries.RECIPE_TYPE, factory);
     }
 
-    public <C extends Container, U extends Recipe<C>, T extends RecipeSerializer<U>> DeferredHolder<RecipeSerializer<?>, T> recipeSerializer(String path, Supplier<T> factory) {
+    public <C extends RecipeInput, U extends Recipe<C>, T extends RecipeSerializer<U>> DeferredHolder<RecipeSerializer<?>, T> recipeSerializer(String path, Supplier<T> factory) {
         return this.registerDH(path, Registries.RECIPE_SERIALIZER, factory);
     }
 
@@ -158,7 +148,7 @@ public class DeferredHelper {
      */
     public Holder<ResourceLocation> customStat(String path, StatFormatter formatter) {
         return this.registerDH(path, Registries.CUSTOM_STAT, () -> {
-            ResourceLocation id = new ResourceLocation(this.modid, path);
+            ResourceLocation id = ResourceLocation.fromNamespaceAndPath(this.modid, path);
             Stats.CUSTOM.get(id, formatter);
             return id;
         });
@@ -181,7 +171,7 @@ public class DeferredHelper {
      */
     protected <R, T extends R> void register(String path, ResourceKey<Registry<R>> regKey, Supplier<T> factory) {
         List<Registrar<?>> registrars = this.objects.computeIfAbsent(regKey, k -> new ArrayList<>());
-        ResourceLocation id = new ResourceLocation(this.modid, path);
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(this.modid, path);
         registrars.add(new Registrar<>(id, factory));
     }
 
@@ -190,7 +180,7 @@ public class DeferredHelper {
      */
     protected <R, T extends R> DeferredHolder<R, T> registerDH(String path, ResourceKey<Registry<R>> regKey, Supplier<T> factory) {
         this.register(path, regKey, factory);
-        return DeferredHolder.create(regKey, new ResourceLocation(this.modid, path));
+        return DeferredHolder.create(regKey, ResourceLocation.fromNamespaceAndPath(this.modid, path));
     }
 
     @SubscribeEvent

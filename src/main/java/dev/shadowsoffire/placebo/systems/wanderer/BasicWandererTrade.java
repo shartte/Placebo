@@ -3,8 +3,7 @@ package dev.shadowsoffire.placebo.systems.wanderer;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-import dev.shadowsoffire.placebo.json.ItemAdapter;
-import net.minecraft.util.ExtraCodecs;
+import dev.shadowsoffire.placebo.json.OptionalStackCodec;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.BasicItemListing;
 
@@ -12,13 +11,13 @@ public class BasicWandererTrade extends BasicItemListing implements WandererTrad
 
     public static Codec<BasicWandererTrade> CODEC = RecordCodecBuilder.create(inst -> inst
         .group(
-            ItemAdapter.CODEC.fieldOf("input_1").forGetter(trade -> trade.price),
-            ExtraCodecs.strictOptionalField(ItemAdapter.CODEC, "input_2", ItemStack.EMPTY).forGetter(trade -> trade.price2),
-            ItemAdapter.CODEC.fieldOf("output").forGetter(trade -> trade.forSale),
-            ExtraCodecs.strictOptionalField(Codec.INT, "max_trades", 1).forGetter(trade -> trade.maxTrades),
-            ExtraCodecs.strictOptionalField(Codec.INT, "xp", 0).forGetter(trade -> trade.xp),
-            ExtraCodecs.strictOptionalField(Codec.FLOAT, "price_mult", 1F).forGetter(trade -> trade.priceMult),
-            ExtraCodecs.strictOptionalField(Codec.BOOL, "rare", false).forGetter(trade -> trade.rare))
+            OptionalStackCodec.INSTANCE.fieldOf("input_1").forGetter(trade -> trade.price),
+            OptionalStackCodec.INSTANCE.optionalFieldOf("input_2", ItemStack.EMPTY).forGetter(trade -> trade.price2),
+            OptionalStackCodec.INSTANCE.fieldOf("output").forGetter(trade -> trade.forSale),
+            Codec.INT.optionalFieldOf("max_trades", 1).forGetter(trade -> trade.maxTrades),
+            Codec.INT.optionalFieldOf("xp", 0).forGetter(trade -> trade.xp),
+            Codec.FLOAT.optionalFieldOf("price_mult", 1F).forGetter(trade -> trade.priceMult),
+            Codec.BOOL.optionalFieldOf("rare", false).forGetter(trade -> trade.rare))
         .apply(inst, BasicWandererTrade::new));
 
     protected final boolean rare;

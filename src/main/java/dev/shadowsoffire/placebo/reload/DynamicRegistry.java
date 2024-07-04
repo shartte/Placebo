@@ -28,9 +28,11 @@ import dev.shadowsoffire.placebo.Placebo;
 import dev.shadowsoffire.placebo.codec.CodecMap;
 import dev.shadowsoffire.placebo.codec.CodecProvider;
 import dev.shadowsoffire.placebo.json.JsonUtil;
-import net.minecraft.nbt.NbtOps;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.RegistryOps;
+import io.netty.handler.codec.CodecException;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.ReloadableServerResources;
 import net.minecraft.server.level.ServerPlayer;
@@ -38,11 +40,9 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.common.conditions.ConditionalOps;
 import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.OnDatapackSyncEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.PacketDistributor.PacketTarget;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 /**
@@ -65,6 +65,7 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
     protected final boolean subtypes;
     protected final CodecMap<R> codecs;
     protected final Codec<DynamicHolder<R>> holderCodec;
+    protected final BiMap<ResourceLocation, StreamCodec<RegistryFriendlyByteBuf, ? extends R>> streamCodecs;
 
     /**
      * Internal registry. Immutable when outside of the registration phase.
@@ -107,8 +108,11 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
         this.synced = synced;
         this.subtypes = subtypes;
         this.codecs = new CodecMap<>(path);
+        this.streamCodecs = HashBiMap.create();
         this.registerBuiltinCodecs();
-        if (this.codecs.isEmpty()) throw new RuntimeException("Attempted to create a dynamic registry for " + path + " with no built-in codecs!");
+        if (this.codecs.isEmpty()) {
+            throw new RuntimeException("Attempted to create a dynamic registry for " + path + " with no built-in codecs!");
+        }
         this.holderCodec = ResourceLocation.CODEC.xmap(this::holder, DynamicHolder::getId);
     }
 
@@ -125,12 +129,12 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
     @Override
     protected final void apply(Map<ResourceLocation, JsonElement> objects, ResourceManager pResourceManager, ProfilerFiller pProfiler) {
         this.beginReload();
-        var ops = ConditionalOps.create(RegistryOps.create(JsonOps.INSTANCE, this.registryAccess), this.conditionContext);
+        var ops = this.makeConditionalOps();
         objects.forEach((key, ele) -> {
             try {
                 if (JsonUtil.checkAndLogEmpty(ele, key, this.path, this.logger) && JsonUtil.checkConditions(ele, key, this.path, this.logger, ops)) {
                     JsonObject obj = ele.getAsJsonObject();
-                    R deserialized = this.codecs.decode(JsonOps.INSTANCE, obj).getOrThrow(false, this::logCodecError).getFirst();
+                    R deserialized = this.codecs.decode(JsonOps.INSTANCE, obj).getOrThrow(this::makeCodecException).getFirst();
                     Preconditions.checkNotNull(deserialized.getCodec(), "A " + this.path + " with id " + key + " is not declaring a codec.");
                     Preconditions.checkNotNull(this.codecs.getKey(deserialized.getCodec()), "A " + this.path + " with id " + key + " is declaring an unregistered codec.");
                     this.register(key, deserialized);
@@ -264,13 +268,26 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
      * Registers a codec to this registry. Does not permit duplicates, and does not permit multiple registration. Not valid for registries that do not support
      * subtypes.
      *
-     * @param key   The key of the codec.
-     * @param codec The codec being registered.
+     * @param key         The key of the codec.
+     * @param codec       The codec being registered.
+     * @param streamCodec A stream codec for synced registries.
      * @throws UnsupportedOperationException if this registry does not support subtypes. Use {@link #registerDefaultCodec(ResourceLocation, Codec)} instead.
      */
-    public final void registerCodec(ResourceLocation key, Codec<? extends R> codec) {
-        if (!this.subtypes) throw new UnsupportedOperationException("Attempted to call registerCodec on a registry which does not support subtypes.");
+    public final void registerCodec(ResourceLocation key, Codec<? extends R> codec, StreamCodec<RegistryFriendlyByteBuf, ? extends R> streamCodec) {
+        if (!this.subtypes) {
+            throw new UnsupportedOperationException("Attempted to call registerCodec on a registry which does not support subtypes.");
+        }
         this.codecs.register(key, codec);
+        this.streamCodecs.put(key, streamCodec);
+    }
+
+    /**
+     * Variant of {@link #registerCodec(ResourceLocation, Codec, StreamCodec)} that automatically wraps the codec as a stream codec.
+     * <p>
+     * If this registry is synced, prefer providing a stream codec via the other overload.
+     */
+    public final void registerCodec(ResourceLocation key, Codec<? extends R> codec) {
+        registerCodec(key, codec, ByteBufCodecs.fromCodecWithRegistries(codec));
     }
 
     /**
@@ -280,8 +297,24 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
      * @param codec The codec being registered.
      * @throws UnsupportedOperationException if a default codec has already been registered.
      */
+    protected final void registerDefaultCodec(ResourceLocation key, Codec<? extends R> codec, StreamCodec<RegistryFriendlyByteBuf, ? extends R> streamCodec) {
+        if (this.codecs.getDefaultCodec() != null) {
+            throw new UnsupportedOperationException("Attempted to register a second " + this.path + " default codec with key " + key);
+        }
+        this.codecs.register(key, codec);
+        this.codecs.setDefaultCodec(codec);
+        this.streamCodecs.put(key, streamCodec);
+    }
+
+    /**
+     * Variant of {@link #registerDefaultCodec(ResourceLocation, Codec, StreamCodec)} that automatically wraps the codec as a stream codec.
+     * <p>
+     * If this registry is synced, prefer providing a stream codec via the other overload.
+     */
     protected final void registerDefaultCodec(ResourceLocation key, Codec<? extends R> codec) {
-        if (this.codecs.getDefaultCodec() != null) throw new UnsupportedOperationException("Attempted to register a second " + this.path + " default codec with key " + key + " but subtypes are not supported!");
+        if (this.codecs.getDefaultCodec() != null) {
+            throw new UnsupportedOperationException("Attempted to register a second " + this.path + " default codec with key " + key);
+        }
         this.codecs.register(key, codec);
         this.codecs.setDefaultCodec(codec);
     }
@@ -352,8 +385,8 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
         this.onReload();
     }
 
-    private void logCodecError(String msg) {
-        Placebo.LOGGER.error("Codec failure for type {}, message: {}", this.path, msg);
+    private CodecException makeCodecException(String msg) {
+        return new CodecException("Codec failure for type %s, message: %s".formatted(this.path, msg));
     }
 
     /**
@@ -361,13 +394,13 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
      */
     private void sync(OnDatapackSyncEvent e) {
         ServerPlayer player = e.getPlayer();
-        PacketTarget target = player == null ? PacketDistributor.ALL.noArg() : PacketDistributor.PLAYER.with(player);
+        Consumer<CustomPacketPayload> target = player == null ? PacketDistributor::sendToAllPlayers : payload -> PacketDistributor.sendToPlayer(player, payload);
 
-        target.send(new ReloadListenerPackets.Start(this.path));
+        target.accept(new ReloadListenerPayloads.Start(this.path));
         this.registry.forEach((k, v) -> {
-            target.send(new ReloadListenerPackets.Content<>(this.path, k, v));
+            target.accept(new ReloadListenerPayloads.Content<>(this.path, k, v));
         });
-        target.send(new ReloadListenerPackets.End(this.path));
+        target.accept(new ReloadListenerPayloads.End(this.path));
     }
 
     /**
@@ -413,10 +446,11 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
          * @param buf   The buffer being written to.
          */
         @SuppressWarnings("unchecked")
-        static <V extends CodecProvider<? super V>> void writeItem(String path, V value, FriendlyByteBuf buf) {
+        static <V extends CodecProvider<? super V>> void writeItem(String path, V value, RegistryFriendlyByteBuf buf) {
             ifPresent(path, registry -> {
-                Codec<V> c = (Codec<V>) registry.codecs;
-                buf.writeNbt(c.encodeStart(NbtOps.INSTANCE, value).getOrThrow(false, registry::logCodecError));
+                ResourceLocation type = registry.codecs.getKey(value.getCodec());
+                buf.writeResourceLocation(type);
+                ((StreamCodec<RegistryFriendlyByteBuf, V>) registry.streamCodecs.get(type)).encode(buf, value);
             });
         }
 
@@ -429,11 +463,13 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
          * @return An object of type V as deserialized from the network.
          */
         @SuppressWarnings("unchecked")
-        static <V> V readItem(String path, FriendlyByteBuf buf) {
+        static <V> V readItem(String path, RegistryFriendlyByteBuf buf) {
             var registry = SYNC_REGISTRY.get(path);
-            if (registry == null) throw new RuntimeException("Received sync packet for unknown registry!");
-            Codec<V> c = (Codec<V>) registry.codecs;
-            return c.decode(NbtOps.INSTANCE, buf.readNbt()).getOrThrow(false, registry::logCodecError).getFirst();
+            if (registry == null) {
+                throw new RuntimeException("Received sync packet for unknown registry!");
+            }
+            ResourceLocation type = buf.readResourceLocation();
+            return ((StreamCodec<RegistryFriendlyByteBuf, V>) registry.streamCodecs.get(type)).decode(buf);
         }
 
         /**
@@ -456,7 +492,9 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
          * @implNote Only called on the logical client.
          */
         static void endSync(String path) {
-            if (ServerLifecycleHooks.getCurrentServer() != null) return; // Do not propgate received changed on the host of a singleplayer world, as they may not be the full data.
+            if (ServerLifecycleHooks.getCurrentServer() != null) {
+                return; // Do not propagate received changes on the host of a singleplayer world, as they may not receive the full data.
+            }
             ifPresent(path, DynamicRegistry::pushStagedToLive);
         }
 
@@ -465,7 +503,9 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
          */
         private static void ifPresent(String path, Consumer<DynamicRegistry<?>> consumer) {
             DynamicRegistry<?> value = SYNC_REGISTRY.get(path);
-            if (value != null) consumer.accept(value);
+            if (value != null) {
+                consumer.accept(value);
+            }
         }
 
         private static void syncAll(OnDatapackSyncEvent e) {

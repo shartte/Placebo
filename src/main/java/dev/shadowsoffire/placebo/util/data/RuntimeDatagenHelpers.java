@@ -12,7 +12,6 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 
 import dev.shadowsoffire.placebo.codec.CodecProvider;
-import net.minecraft.Util;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.fml.loading.FMLPaths;
 
@@ -33,7 +32,7 @@ public class RuntimeDatagenHelpers {
      * @throws IllegalStateException if the serialization fails
      */
     public static <T> JsonElement toJson(T object, Codec<T> codec) {
-        return Util.getOrThrow(codec.encodeStart(JsonOps.INSTANCE, object), IllegalStateException::new);
+        return codec.encodeStart(JsonOps.INSTANCE, object).getOrThrow();
     }
 
     /**

@@ -13,7 +13,6 @@ public class PlaceboCommand {
         LiteralArgumentBuilder<CommandSourceStack> builder = Commands.literal("placebo");
         SerializeLootTableCommand.register(builder);
         HandToJsonCommand.register(builder);
-        StringToObjCommand.register(builder, ctx);
         pDispatcher.register(builder);
     }
 

@@ -70,7 +70,7 @@ public abstract class WeightedDynamicRegistry<V extends CodecProvider<? super V>
      */
     @Nullable
     public V getRandomItem(RandomSource rand, float luck) {
-        if (luck == 0) return WeightedRandom.getRandomItem(rand, this.zeroLuckList, this.zeroLuckTotalWeight).map(Wrapper::getData).orElse(null);
+        if (luck == 0) return WeightedRandom.getRandomItem(rand, this.zeroLuckList, this.zeroLuckTotalWeight).map(Wrapper::data).orElse(null);
         return this.getRandomItem(rand, luck, Predicates.alwaysTrue());
     }
 
@@ -86,7 +86,7 @@ public abstract class WeightedDynamicRegistry<V extends CodecProvider<? super V>
             stream = stream.filter(filter);
         }
         stream.map(l -> l.<V>wrap(luck)).forEach(list::add);
-        return WeightedRandom.getRandomItem(rand, list).map(Wrapper::getData).orElse(null);
+        return WeightedRandom.getRandomItem(rand, list).map(Wrapper::data).orElse(null);
     }
 
     /**

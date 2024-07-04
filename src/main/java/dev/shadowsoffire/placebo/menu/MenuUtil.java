@@ -1,7 +1,7 @@
 package dev.shadowsoffire.placebo.menu;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -58,7 +58,7 @@ public class MenuUtil {
         T create(int id, Inventory pInv, BlockPos pos);
 
         @Override
-        default T create(int id, Inventory inv, FriendlyByteBuf buf) {
+        default T create(int id, Inventory inv, RegistryFriendlyByteBuf buf) {
             return this.create(id, inv, buf.readBlockPos());
         }
     }

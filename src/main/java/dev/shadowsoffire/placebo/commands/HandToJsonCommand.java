@@ -12,10 +12,11 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.serialization.JsonOps;
 
-import dev.shadowsoffire.placebo.json.ItemAdapter;
+import dev.shadowsoffire.placebo.json.OptionalStackCodec;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.world.item.ItemStack;
 
 public class HandToJsonCommand {
@@ -27,7 +28,7 @@ public class HandToJsonCommand {
     public static void register(LiteralArgumentBuilder<CommandSourceStack> builder) {
         builder.then(Commands.literal("hand").executes(ctx -> {
             try {
-                String str = toJsonStr(ctx.getSource().getEntity().getHandSlots().iterator().next());
+                String str = toJsonStr(ctx.getSource().getEntity().getWeaponItem(), RegistryOps.create(JsonOps.INSTANCE, ctx.getSource().getServer().registryAccess()));
                 ctx.getSource().sendSystemMessage(Component.literal(str));
             }
             catch (IOException e) {
@@ -37,8 +38,8 @@ public class HandToJsonCommand {
         }));
     }
 
-    public static String toJsonStr(ItemStack stack) throws IOException {
-        JsonElement json = ItemAdapter.CODEC.encodeStart(JsonOps.INSTANCE, stack).get().left().get();
+    public static String toJsonStr(ItemStack stack, RegistryOps<JsonElement> ops) throws IOException {
+        JsonElement json = OptionalStackCodec.INSTANCE.encodeStart(ops, stack).getOrThrow();
         StringWriter str = new StringWriter();
         JsonWriter writer = GSON.newJsonWriter(str);
         writer.setIndent("    ");

@@ -32,16 +32,17 @@ public class ClientUtil {
     }
 
     public static void innerBlit(Matrix4f pMatrix, float pX1, float pX2, float pY1, float pY2, int pBlitOffset, float pMinU, float pMaxU, float pMinV, float pMaxV, int color) {
-        RenderSystem.setShader(GameRenderer::getPositionColorTexShader);
-        BufferBuilder bufferbuilder = Tesselator.getInstance().getBuilder();
-        bufferbuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR_TEX);
+        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+        BufferBuilder bufferbuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
         int a = color >> 24 & 0xFF, r = color >> 16 & 0xFF, g = color >> 8 & 0xFF, b = color & 0xFF;
-        if (a == 0) a = 255;
-        bufferbuilder.vertex(pMatrix, pX1, pY2, pBlitOffset).color(r, g, b, a).uv(pMinU, pMaxV).endVertex();
-        bufferbuilder.vertex(pMatrix, pX2, pY2, pBlitOffset).color(r, g, b, a).uv(pMaxU, pMaxV).endVertex();
-        bufferbuilder.vertex(pMatrix, pX2, pY1, pBlitOffset).color(r, g, b, a).uv(pMaxU, pMinV).endVertex();
-        bufferbuilder.vertex(pMatrix, pX1, pY1, pBlitOffset).color(r, g, b, a).uv(pMinU, pMinV).endVertex();
-        BufferUploader.drawWithShader(bufferbuilder.end());
+        if (a == 0) {
+            a = 255;
+        }
+        bufferbuilder.addVertex(pMatrix, pX1, pY2, pBlitOffset).setUv(pMinU, pMaxV).setColor(r, g, b, a);
+        bufferbuilder.addVertex(pMatrix, pX2, pY2, pBlitOffset).setUv(pMaxU, pMaxV).setColor(r, g, b, a);
+        bufferbuilder.addVertex(pMatrix, pX2, pY1, pBlitOffset).setUv(pMaxU, pMinV).setColor(r, g, b, a);
+        bufferbuilder.addVertex(pMatrix, pX1, pY1, pBlitOffset).setUv(pMinU, pMinV).setColor(r, g, b, a);
+        BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
     }
 
 }

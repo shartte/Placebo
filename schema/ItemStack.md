@@ -9,11 +9,10 @@ This object references the following objects:
 # Schema
 ```js
 {
-    "item": "string",       // [Mandatory] || Registry name of the item to load.
-    "optional": boolean,    // [Optional]  || If this stack is optional, and will produce an empty stack instead of throwing an error when the item is not found. Default value = false.
-    "count": integer,       // [Optional]  || Stack Size. Default value = 1.
-    "nbt": CompoundTag,     // [Optional]  || Vanilla Item NBT. Default value = empty NBT.
-    "cap_nbt": CompoundTag, // [Optional]  || Forge Item Capability NBT. Default value = empty NBT.
+    "id": "string",                   // [Mandatory] || Registry name of the item to load.
+    "optional": boolean,              // [Optional]  || If this stack is optional, and will produce an empty stack instead of throwing an error when the item is not found. Default value = false.
+    "count": integer,                 // [Optional]  || Stack Size. Default value = 1.
+    "components": DataComponentPatch, // [Optional]  || Vanilla Item NBT. Default value = empty NBT.
 }
 ```
 
@@ -24,16 +23,14 @@ Some consumers may not accept empty stacks for any reason.
 A full durability netherite sword
 ```json
 {
-    "item": "minecraft:netherite_sword",
+    "id": "minecraft:netherite_sword",
     "count": 1,
-    "nbt": {
-        "Damage": 0,
-        "Enchantments": [
-            {
-                "lvl": 4,
-                "id": "minecraft:sharpness"
+    "components": {
+        "minecraft:enchantments": {
+            "levels": {
+                "minecraft:sharpness": 2
             }
-        ]
+        }
     }
 }
 ```

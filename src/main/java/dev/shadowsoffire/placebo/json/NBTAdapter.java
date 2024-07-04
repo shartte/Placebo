@@ -15,7 +15,6 @@ import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 
-import dev.shadowsoffire.placebo.Placebo;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
 
@@ -40,7 +39,7 @@ public class NBTAdapter implements JsonDeserializer<CompoundTag>, JsonSerializer
 
     @Override
     public CompoundTag deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-        return EITHER_CODEC.parse(JsonOps.INSTANCE, json).getOrThrow(false, Placebo.LOGGER::error);
+        return EITHER_CODEC.parse(JsonOps.INSTANCE, json).getOrThrow(JsonParseException::new);
     }
 
 }

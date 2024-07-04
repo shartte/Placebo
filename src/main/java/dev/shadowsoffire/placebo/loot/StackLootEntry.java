@@ -4,9 +4,10 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-import dev.shadowsoffire.placebo.json.ItemAdapter;
+import dev.shadowsoffire.placebo.json.OptionalStackCodec;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ItemLike;
@@ -23,9 +24,9 @@ import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
  */
 public class StackLootEntry extends LootPoolSingletonContainer {
 
-    public static final Codec<StackLootEntry> CODEC = RecordCodecBuilder.create(inst -> inst
+    public static final MapCodec<StackLootEntry> CODEC = RecordCodecBuilder.mapCodec(inst -> inst
         .group(
-            ItemAdapter.CODEC.fieldOf("stack").forGetter(e -> e.stack),
+            OptionalStackCodec.INSTANCE.fieldOf("stack").forGetter(e -> e.stack),
             Codec.intRange(0, 64).fieldOf("min").forGetter(e -> e.min),
             Codec.intRange(0, 64).fieldOf("max").forGetter(e -> e.max))
         .and(singletonFields(inst))

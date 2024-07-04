@@ -24,7 +24,7 @@ public class DynamicHolder<T> implements Supplier<T> {
      *
      * @see DynamicRegistry#emptyHolder()
      */
-    public static final ResourceLocation EMPTY = new ResourceLocation("empty", "empty");
+    public static final ResourceLocation EMPTY = ResourceLocation.fromNamespaceAndPath("empty", "empty");
 
     protected final DynamicRegistry<? super T> registry;
     protected final ResourceLocation id;

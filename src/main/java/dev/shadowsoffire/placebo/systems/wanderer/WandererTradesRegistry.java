@@ -8,16 +8,14 @@ import dev.shadowsoffire.placebo.PlaceboConfig;
 import dev.shadowsoffire.placebo.reload.DynamicRegistry;
 import net.minecraft.world.entity.npc.VillagerTrades.ItemListing;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.Mod.EventBusSubscriber;
-import net.neoforged.fml.common.Mod.EventBusSubscriber.Bus;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.common.EventBusSubscriber.Bus;
 import net.neoforged.neoforge.event.village.WandererTradesEvent;
 
 /**
  * Allows loading wandering trader trades from json.
- * <p>
- * Due to a limitation of {@link WandererTradesEvent}, reloading this registry requires restarting the server.
  */
-@EventBusSubscriber(modid = Placebo.MODID, bus = Bus.FORGE)
+@EventBusSubscriber(modid = Placebo.MODID, bus = Bus.GAME)
 public class WandererTradesRegistry extends DynamicRegistry<WandererTrade> {
 
     public static final WandererTradesRegistry INSTANCE = new WandererTradesRegistry();
@@ -45,15 +43,23 @@ public class WandererTradesRegistry extends DynamicRegistry<WandererTrade> {
     protected void onReload() {
         super.onReload();
         this.getValues().forEach(trade -> {
-            if (trade.isRare()) this.rareTrades.add(trade);
-            else this.normTrades.add(trade);
+            if (trade.isRare()) {
+                this.rareTrades.add(trade);
+            }
+            else {
+                this.normTrades.add(trade);
+            }
         });
     }
 
     @SubscribeEvent
     public static void replaceTrades(WandererTradesEvent e) {
-        if (PlaceboConfig.clearWandererNormalTrades) e.getGenericTrades().clear();
-        if (PlaceboConfig.clearWandererRareTrades) e.getRareTrades().clear();
+        if (PlaceboConfig.clearWandererNormalTrades) {
+            e.getGenericTrades().clear();
+        }
+        if (PlaceboConfig.clearWandererRareTrades) {
+            e.getRareTrades().clear();
+        }
         e.getGenericTrades().addAll(INSTANCE.normTrades);
         e.getRareTrades().addAll(INSTANCE.rareTrades);
     }

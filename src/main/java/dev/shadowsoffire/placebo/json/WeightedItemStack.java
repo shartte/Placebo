@@ -6,7 +6,6 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import dev.shadowsoffire.placebo.systems.gear.GearSet;
-import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.random.Weight;
 import net.minecraft.util.random.WeightedEntry;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -22,9 +21,9 @@ import net.minecraft.world.item.ItemStack;
 public class WeightedItemStack extends WeightedEntry.IntrusiveBase {
 
     public static final Codec<WeightedItemStack> CODEC = RecordCodecBuilder.create(inst -> inst.group(
-        ItemAdapter.CODEC.fieldOf("stack").forGetter(w -> w.stack),
+        OptionalStackCodec.INSTANCE.fieldOf("stack").forGetter(w -> w.stack),
         Weight.CODEC.fieldOf("weight").forGetter(WeightedItemStack::getWeight),
-        ExtraCodecs.strictOptionalField(Codec.FLOAT, "drop_chance", -1F).forGetter(w -> w.dropChance))
+        Codec.FLOAT.optionalFieldOf("drop_chance", -1F).forGetter(w -> w.dropChance))
         .apply(inst, WeightedItemStack::new));
 
     public static final Codec<List<WeightedItemStack>> LIST_CODEC = CODEC.listOf();

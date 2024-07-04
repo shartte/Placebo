@@ -1,10 +1,14 @@
 package dev.shadowsoffire.placebo.util;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 
 import javax.annotation.Nullable;
 
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
@@ -20,7 +24,6 @@ import net.minecraft.world.item.ItemStack;
 public final class CachedObject<T> {
 
     public static final int HAS_NEVER_BEEN_INITIALIZED = -2;
-    public static final int EMPTY_NBT = -1;
 
     protected final ResourceLocation id;
     protected final Function<ItemStack, T> deserializer;
@@ -40,16 +43,6 @@ public final class CachedObject<T> {
         this.id = id;
         this.deserializer = deserializer;
         this.hasher = hasher;
-    }
-
-    /**
-     * Creates a new CachedObject.
-     *
-     * @param id           The ID of this object.
-     * @param deserializer The deserialization function. May return null. The stack passed to the function may be empty.
-     */
-    public CachedObject(ResourceLocation id, Function<ItemStack, T> deserializer) {
-        this(id, deserializer, CachedObject::defaultHash);
     }
 
     /**
@@ -93,17 +86,11 @@ public final class CachedObject<T> {
     }
 
     /**
-     * The default hash function hashes the entire compound tag.
-     */
-    public static int defaultHash(ItemStack stack) {
-        return stack.hasTag() ? stack.getTag().hashCode() : EMPTY_NBT;
-    }
-
-    /**
      * Creates a hashing function that hashes a specific subkey.
      */
-    public static ToIntFunction<ItemStack> hashSubkey(String subkey) {
-        return stack -> stack.getTagElement(subkey) != null ? stack.getTagElement(subkey).hashCode() : EMPTY_NBT;
+    public static ToIntFunction<ItemStack> hashComponents(DataComponentType<?>... types) {
+        List<DataComponentType<?>> typeList = Arrays.asList(types);
+        return stack -> Arrays.hashCode(typeList.stream().map(stack::get).filter(Objects::nonNull).toArray());
     }
 
     /**
@@ -126,28 +113,12 @@ public final class CachedObject<T> {
         public <T> T getOrCreate(ResourceLocation id, Function<ItemStack, T> deserializer, ToIntFunction<ItemStack> hasher);
 
         /**
-         * @see #getOrCreate(ResourceLocation, Function, ToIntFunction)
-         */
-        public default <T> T getOrCreate(ResourceLocation id, Function<ItemStack, T> deserializer) {
-            return this.getOrCreate(id, deserializer, CachedObject::defaultHash);
-        }
-
-        /**
          * Helper which hides the cast to CachedObjectSource.
          *
          * @see #getOrCreate(ResourceLocation, Function, ToIntFunction)
          */
         public static <T> T getOrCreate(ItemStack stack, ResourceLocation id, Function<ItemStack, T> deserializer, ToIntFunction<ItemStack> hasher) {
             return ((CachedObjectSource) (Object) stack).getOrCreate(id, deserializer, hasher);
-        }
-
-        /**
-         * Helper which hides the cast to CachedObjectSource.
-         *
-         * @see #getOrCreate(ResourceLocation, Function, ToIntFunction)
-         */
-        public static <T> T getOrCreate(ItemStack stack, ResourceLocation id, Function<ItemStack, T> deserializer) {
-            return ((CachedObjectSource) (Object) stack).getOrCreate(id, deserializer);
         }
 
     }

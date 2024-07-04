@@ -61,8 +61,8 @@ public class MapBackedCodec<V extends CodecProvider<? super V>> implements Codec
         if (key == null) {
             return DataResult.error(() -> "Attempted to serialize an element of type " + this.name + " with an unregistered codec! Object: " + input);
         }
-        T encodedKey = ResourceLocation.CODEC.encodeStart(ops, key).getOrThrow(false, Placebo.LOGGER::error);
-        T encodedObj = codec.encode(input, ops, prefix).getOrThrow(false, Placebo.LOGGER::error);
+        T encodedKey = ResourceLocation.CODEC.encodeStart(ops, key).getOrThrow(IllegalStateException::new);
+        T encodedObj = codec.encode(input, ops, prefix).getOrThrow(IllegalStateException::new);
         return ops.mergeToMap(encodedObj, ops.createString("type"), encodedKey);
     }
 }

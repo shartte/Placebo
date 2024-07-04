@@ -46,7 +46,7 @@ public class Wing extends EntityModel<AbstractClientPlayer> implements IWingMode
     public void setupAnim(AbstractClientPlayer entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {}
 
     @Override
-    public void renderToBuffer(PoseStack matrixStack, VertexConsumer buffer, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
+    public void renderToBuffer(PoseStack matrixStack, VertexConsumer buffer, int packedLight, int packedOverlay, int color) {
         this.bb_main.render(matrixStack, buffer, packedLight, packedOverlay);
     }
 
@@ -60,7 +60,7 @@ public class Wing extends EntityModel<AbstractClientPlayer> implements IWingMode
         float rotationTime = player.tickCount % 40 + partialTicks;
         this.setRotationAngle(this.cube_r1, 0, 0.3491F * 1.5F + 0.3491F / 2 * (float) Math.sin(type.flapSpeed * Math.PI * rotationTime / 20), 0);
         this.setRotationAngle(this.cube_r2, 0, -(0.3491F * 1.5F + 0.3491F / 2 * (float) Math.sin(type.flapSpeed * Math.PI * rotationTime / 20)), 0);
-        this.renderToBuffer(stack, buf.getBuffer(RenderType.entityTranslucent(texture)), packedLightIn, OverlayTexture.NO_OVERLAY, 1, 1, 1, 1);
+        this.renderToBuffer(stack, buf.getBuffer(RenderType.entityTranslucent(texture)), packedLightIn, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF);
     }
 
     public void setRotationAngle(ModelPart modelRenderer, float x, float y, float z) {

@@ -7,13 +7,12 @@ import com.google.common.collect.ImmutableList;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.level.ItemLike;
 
 /**
@@ -31,12 +30,6 @@ public class PlaceboUtil {
         for (T t : objs)
             list.add(t);
         return list;
-    }
-
-    public static CompoundTag getStackNBT(ItemStack stack) {
-        CompoundTag tag = stack.getTag();
-        if (tag == null) stack.setTag(tag = new CompoundTag());
-        return tag;
     }
 
     /**
@@ -91,10 +84,8 @@ public class PlaceboUtil {
      * @param lore  The actual lore.
      */
     public static void addLore(ItemStack stack, Component lore) {
-        CompoundTag display = stack.getOrCreateTagElement("display");
-        ListTag tag = display.getList("Lore", 8);
-        tag.add(StringTag.valueOf(Component.Serializer.toJson(lore)));
-        display.put("Lore", tag);
+        ItemLore comp = stack.get(DataComponents.LORE);
+        stack.set(DataComponents.LORE, comp.withLineAdded(lore));
     }
 
     /**

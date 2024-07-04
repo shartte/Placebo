@@ -5,11 +5,12 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import net.minecraft.network.ConnectionProtocol;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.neoforged.neoforge.network.registration.HandlerThread;
 
 /**
  * A Payload Provider encapsulates the default components that make up a custom payload packet registration.
@@ -17,20 +18,17 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
  * @param <T> The type of the payload.
  * @param <C> The type of the payload context.
  */
-public interface PayloadProvider<T extends CustomPacketPayload, C extends IPayloadContext> {
+public interface PayloadProvider<T extends CustomPacketPayload> {
 
     /**
-     * @return The ID of the payload registration being provided. Must match {@link CustomPacketPayload#id()}.
+     * @return The type of the payload being registered. Must match {@link CustomPacketPayload#type()}.
      */
-    ResourceLocation id();
+    CustomPacketPayload.Type<T> getType();
 
     /**
-     * Reads the message from a byte buffer. Must construct a new message object.
-     *
-     * @param buf The byte buffer. Data must be read in the order it was written.
-     * @return A new message instance with the read data.
+     * @return The {@link StreamCodec} responsible for encoding/decoding the payload.
      */
-    T read(FriendlyByteBuf buf);
+    StreamCodec<? super RegistryFriendlyByteBuf, T> getCodec();
 
     /**
      * Handle the payload.
@@ -39,7 +37,7 @@ public interface PayloadProvider<T extends CustomPacketPayload, C extends IPaylo
      * @param msg The messsage to handle.
      * @param ctx Relevant network context information.
      */
-    void handle(T msg, C ctx);
+    void handle(T msg, IPayloadContext ctx);
 
     /**
      * Gets a list of all supported connection protocols. This method may allocated a new list, as it is only called once.
@@ -61,15 +59,20 @@ public interface PayloadProvider<T extends CustomPacketPayload, C extends IPaylo
      * <p>
      * You should always change the payload's version if the serialization changes.
      */
-    default String getVersion() {
-        return "1";
-    }
+    String getVersion();
 
     /**
      * {@return true if this payload is optional, and does not need to be present on the other side}
      */
     default boolean isOptional() {
-        return true;
+        return false;
+    }
+
+    /**
+     * @return The thread that will be used to execute the {@link #handle(CustomPacketPayload, IPayloadContext)} method.
+     */
+    default HandlerThread getHandlerThread() {
+        return HandlerThread.MAIN;
     }
 
 }

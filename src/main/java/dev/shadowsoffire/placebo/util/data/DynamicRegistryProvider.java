@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import com.mojang.serialization.Codec;
-
 import dev.shadowsoffire.placebo.codec.CodecProvider;
 import dev.shadowsoffire.placebo.reload.DynamicRegistry;
 import net.minecraft.core.HolderLookup;
@@ -55,7 +53,7 @@ public abstract class DynamicRegistryProvider<T extends CodecProvider<T>> implem
      */
     @SuppressWarnings("unchecked")
     protected final void add(ResourceLocation id, T object) {
-        this.futures.add(DataProvider.saveStable(this.cachedOutput, (Codec<T>) object.getCodec(), object, this.pathProvider.json(id)));
+        this.futures.add(DataProvider.saveStable(this.cachedOutput, RuntimeDatagenHelpers.toJson(object), this.pathProvider.json(id)));
     }
 
     /**
