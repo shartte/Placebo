@@ -1,3 +1,10 @@
+## 9.3.0
+* Ported to 1.21
+* Added `StreamCodec` support to `DynamicRegistry`.
+* Renamed `ItemAdapter` to `OptionalStackCodec`.
+* Removed the `/placbeo string_to_obj` command.
+* Removed `PotionIngredient`, `PacketDistro`, `LootSystem`, `PoolBuilder`, and `BrewingRecipeRegistry`.
+
 ## 9.2.2
 * Fixed `ButtonClickMessage`'s ID being null.
 
