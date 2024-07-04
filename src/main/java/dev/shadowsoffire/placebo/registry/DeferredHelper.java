@@ -6,9 +6,11 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -160,6 +162,10 @@ public class DeferredHelper {
 
     public <T extends CreativeModeTab> DeferredHolder<CreativeModeTab, T> tab(String path, Supplier<T> factory) {
         return this.registerDH(path, Registries.CREATIVE_MODE_TAB, factory);
+    }
+
+    public <T> DeferredHolder<DataComponentType<?>, DataComponentType<T>> enchantmentEffect(String path, UnaryOperator<DataComponentType.Builder<T>> operator) {
+        return this.registerDH(path, Registries.ENCHANTMENT_EFFECT_COMPONENT_TYPE, () -> operator.apply(DataComponentType.builder()).build());
     }
 
     public <R, T extends R> DeferredHolder<R, T> custom(String path, ResourceKey<Registry<R>> registry, Supplier<T> factory) {
