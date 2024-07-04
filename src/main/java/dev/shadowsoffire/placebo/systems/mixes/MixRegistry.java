@@ -46,15 +46,10 @@ public class MixRegistry extends DynamicRegistry<JsonMix<?>> {
      */
     @Nullable
     private static PotionBrewing resolveBrewing() {
-        if (FMLEnvironment.dist.isClient()) {
-            if (EffectiveSide.get().isClient()) {
-                return PlaceboClient.getBrewingRegistry();
-            }
-            return ServerLifecycleHooks.getCurrentServer().potionBrewing();
+        if (FMLEnvironment.dist.isClient() && EffectiveSide.get().isClient()) {
+            return PlaceboClient.getBrewingRegistry();
         }
-        else {
-            return ServerLifecycleHooks.getCurrentServer().potionBrewing();
-        }
+        return ServerLifecycleHooks.getCurrentServer() == null ? null : ServerLifecycleHooks.getCurrentServer().potionBrewing();
     }
 
     @SuppressWarnings("unchecked")
