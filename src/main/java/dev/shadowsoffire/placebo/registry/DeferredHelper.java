@@ -168,6 +168,10 @@ public class DeferredHelper {
         return this.registerDH(path, Registries.ENCHANTMENT_EFFECT_COMPONENT_TYPE, () -> operator.apply(DataComponentType.builder()).build());
     }
 
+    public <T> DeferredHolder<DataComponentType<?>, DataComponentType<T>> component(String path, UnaryOperator<DataComponentType.Builder<T>> operator) {
+        return this.registerDH(path, Registries.DATA_COMPONENT_TYPE, () -> operator.apply(DataComponentType.builder()).build());
+    }
+
     public <R, T extends R> DeferredHolder<R, T> custom(String path, ResourceKey<Registry<R>> registry, Supplier<T> factory) {
         return this.registerDH(path, registry, factory);
     }
