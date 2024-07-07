@@ -277,8 +277,7 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
         if (!this.subtypes) {
             throw new UnsupportedOperationException("Attempted to call registerCodec on a registry which does not support subtypes.");
         }
-        this.codecs.register(key, codec);
-        this.streamCodecs.put(key, streamCodec);
+        this.registerInternal(key, codec, streamCodec);
     }
 
     /**
@@ -301,9 +300,8 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
         if (this.codecs.getDefaultCodec() != null) {
             throw new UnsupportedOperationException("Attempted to register a second " + this.path + " default codec with key " + key);
         }
-        this.codecs.register(key, codec);
+        this.registerInternal(key, codec, streamCodec);
         this.codecs.setDefaultCodec(codec);
-        this.streamCodecs.put(key, streamCodec);
     }
 
     /**
@@ -312,11 +310,7 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
      * If this registry is synced, prefer providing a stream codec via the other overload.
      */
     protected final void registerDefaultCodec(ResourceLocation key, Codec<? extends R> codec) {
-        if (this.codecs.getDefaultCodec() != null) {
-            throw new UnsupportedOperationException("Attempted to register a second " + this.path + " default codec with key " + key);
-        }
-        this.codecs.register(key, codec);
-        this.codecs.setDefaultCodec(codec);
+        registerDefaultCodec(key, codec, ByteBufCodecs.fromCodecWithRegistries(codec));
     }
 
     /**
@@ -401,6 +395,14 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
             target.accept(new ReloadListenerPayloads.Content<>(this.path, k, v));
         });
         target.accept(new ReloadListenerPayloads.End(this.path));
+    }
+
+    private void registerInternal(ResourceLocation key, Codec<? extends R> codec, StreamCodec<RegistryFriendlyByteBuf, ? extends R> streamCodec) {
+        Preconditions.checkNotNull(key);
+        Preconditions.checkNotNull(codec, "Attempted to register a null codec for key " + key);
+        Preconditions.checkNotNull(streamCodec, "Attempted to register a null stream codec for key " + key);
+        this.codecs.register(key, codec);
+        this.streamCodecs.put(key, streamCodec);
     }
 
     /**
