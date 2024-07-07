@@ -379,6 +379,20 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
         this.onReload();
     }
 
+    /**
+     * Performs a fake reload by making a copy of {@link #registry} and re-registering the original contents.
+     * This triggers the full reload process for the client.
+     *
+     * @implNote This is used instead of {@link #pushStagedToLive()} for singleplayer hosts to avoid data loss.
+     */
+    private void triggerClientsideReload() {
+        this.staged.clear();
+        this.staged.putAll(this.registry);
+        this.beginReload();
+        this.staged.forEach(this::register);
+        this.onReload();
+    }
+
     private CodecException makeCodecException(String msg) {
         return new CodecException("Codec failure for type %s, message: %s".formatted(this.path, msg));
     }
@@ -495,9 +509,14 @@ public abstract class DynamicRegistry<R extends CodecProvider<? super R>> extend
          */
         static void endSync(String path) {
             if (ServerLifecycleHooks.getCurrentServer() != null) {
-                return; // Do not propagate received changes on the host of a singleplayer world, as they may not receive the full data.
+                // On a singleplayer host, we have to re-register a copy of the original data instead of the synced data
+                // since the synced data may not contain the "full" information from the server.
+                ifPresent(path, DynamicRegistry::triggerClientsideReload);
             }
-            ifPresent(path, DynamicRegistry::pushStagedToLive);
+            else {
+                ifPresent(path, DynamicRegistry::pushStagedToLive);
+            }
+            Placebo.LOGGER.info("Completed sync for {}", path);
         }
 
         /**

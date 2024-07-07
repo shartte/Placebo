@@ -11,7 +11,6 @@ import dev.shadowsoffire.placebo.reload.DynamicRegistry;
 import dev.shadowsoffire.placebo.systems.mixes.JsonMix.Type;
 import net.minecraft.world.item.alchemy.PotionBrewing;
 import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.fml.util.thread.EffectiveSide;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 public class MixRegistry extends DynamicRegistry<JsonMix<?>> {
@@ -29,27 +28,36 @@ public class MixRegistry extends DynamicRegistry<JsonMix<?>> {
 
     @Override
     protected void beginReload() {
-        removeAll(resolveBrewing());
+        for (PotionBrewing brewing : resolveBrewing()) {
+            removeAll(brewing);
+        }
         super.beginReload();
     }
 
     @Override
     protected void onReload() {
-        addAll(resolveBrewing());
+        for (PotionBrewing brewing : resolveBrewing()) {
+            addAll(brewing);
+        }
         super.onReload();
     }
 
     /**
-     * Attempts to resolve the {@link PotionBrewing} instance from the given global context.
+     * Attempts to resolve the {@link PotionBrewing} instances from the given global context.
      * <p>
-     * This is nullable because it fails to resolve during world creation in singleplayer, since an instance has not been created yet.
+     * These are nullable because it fails to resolve during world creation in singleplayer, since an instance has not been created yet.
      */
-    @Nullable
-    private static PotionBrewing resolveBrewing() {
-        if (FMLEnvironment.dist.isClient() && EffectiveSide.get().isClient()) {
-            return PlaceboClient.getBrewingRegistry();
+    private static List<@Nullable PotionBrewing> resolveBrewing() {
+        List<PotionBrewing> registries = new ArrayList<>();
+        if (FMLEnvironment.dist.isClient()) {
+            registries.add(PlaceboClient.getBrewingRegistry());
         }
-        return ServerLifecycleHooks.getCurrentServer() == null ? null : ServerLifecycleHooks.getCurrentServer().potionBrewing();
+
+        if (ServerLifecycleHooks.getCurrentServer() != null) {
+            registries.add(ServerLifecycleHooks.getCurrentServer().potionBrewing());
+        }
+
+        return registries;
     }
 
     @SuppressWarnings("unchecked")
