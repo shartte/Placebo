@@ -1,3 +1,8 @@
+## 9.3.2
+* Fixed Dynamic Registries not registering stream codecs.
+* Fixed a crash that would occur if a JsonMix was instantiated.
+* Added a registration helper for data components.
+
 ## 9.3.1
 * Fixed a dedicated server crash.
 
