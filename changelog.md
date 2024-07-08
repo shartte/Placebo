@@ -1,3 +1,7 @@
+## 9.3.3
+* Made `DynamicRegistry#beginReload` and `DynamicRegistry#onReload` called on SSP hosts with the original registry data.
+  * This fixes a bug where json brewing mixes were not being populated to JEI.
+
 ## 9.3.2
 * Fixed Dynamic Registries not registering stream codecs.
 * Fixed a crash that would occur if a JsonMix was instantiated.
