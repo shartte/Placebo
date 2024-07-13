@@ -1,9 +1,7 @@
 plugins {
     id 'java-library'
-    id 'idea'
-    id 'eclipse'
     id 'maven-publish'
-    id 'net.neoforged.gradle.userdev' version '7.0.152'
+    id 'net.neoforged.moddev' version '1.0.13'
     id 'com.diffplug.eclipse.apt' version '3.42.2'
     id 'net.darkhax.curseforgegradle' version '1.1.18'
 }
@@ -13,43 +11,6 @@ base {
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(project.properties.javaVersion)
-
-minecraft {
-    accessTransformers.file file('src/main/resources/META-INF/accesstransformer.cfg')
-}
-
-subsystems {
-    parchment {
-        def split = "${parchmentVersion}".split('-')
-        minecraftVersion = split[1]
-        mappingsVersion = split[0]
-    }
-}
-
-runs {
-    configureEach {
-        systemProperty 'forge.logging.markers', ''
-        systemProperty 'forge.logging.console.level', 'debug'
-        modSource project.sourceSets.main
-    }
-
-    client {
-        systemProperty 'forge.enabledGameTestNamespaces', "${modid}"
-    }
-
-    server {
-        systemProperty 'forge.enabledGameTestNamespaces', "${modid}"
-        programArgument '--nogui'
-    }
-
-    data {
-        programArguments.addAll '--mod', "${modid}", '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
-    }
-}
-
-sourceSets.main.resources {
-    srcDir 'src/generated/resources'
-}
 
 repositories {
     maven {
@@ -94,7 +55,6 @@ repositories {
 }
 
 dependencies {
-    implementation "net.neoforged:neoforge:${forgeVersion}"
     if(project.mixin.toBoolean())                   annotationProcessor "org.spongepowered:mixin:${mixinVersion}:processor"
     if(project.hasProperty('placeboVersion'))       implementation "dev.shadowsoffire:Placebo:${mcVersion}-${placeboVersion}"
     if(project.hasProperty('jeiVersion'))           implementation "mezz.jei:jei-${mcVersion}-neoforge:${jeiVersion}"
@@ -108,7 +68,7 @@ dependencies {
     if(project.hasProperty('attributeslibVersion')) implementation "dev.shadowsoffire:ApothicAttributes:${mcVersion}-${attributeslibVersion}"
 }
 
-tasks.named('processResources', ProcessResources).configure {
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     def replaceProperties = [
         modGroup: modGroup,
         modid: modid,
@@ -140,6 +100,9 @@ tasks.named('processResources', ProcessResources).configure {
     def resourceTargets = [
         'META-INF/neoforge.mods.toml'
     ]
+    
+    from("src/metadata")
+    into("build/generated/metadata")
 
     filesMatching(resourceTargets) {
         expand replaceProperties
@@ -219,6 +182,59 @@ tasks.named('processResources', ProcessResources).configure {
     }
 }
 
+neoForge {
+    version = project.properties.forgeVersion
+
+    parchment {
+        def split = "${parchmentVersion}".split('-')
+        minecraftVersion = split[1]
+        mappingsVersion = split[0]
+    }
+
+    mods {
+        create(project.name) {
+            sourceSet project.sourceSets.main
+        }
+    }
+
+    runs {
+        configureEach {
+            logLevel = org.slf4j.event.Level.DEBUG
+            taskBefore generateModMetadata
+        }
+
+        client {
+            client()
+            systemProperty 'forge.enabledGameTestNamespaces', "${modid}"
+            ideName = "${project.name} - Client"
+        }
+
+        server {
+            server()
+            systemProperty 'forge.enabledGameTestNamespaces', "${modid}"
+            programArgument '--nogui'
+            ideName = "${project.name} - Server"
+        }
+
+        data {
+            data()
+            programArguments.addAll '--mod', "${modid}", '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+            ideName = "${project.name} - Data"
+        }
+    }
+
+    ideSyncTask generateModMetadata
+
+    neoFormRuntime {
+        useEclipseCompiler = true // Allows for parallelism on recompile
+    }
+}
+
+sourceSets.main.resources {
+    srcDir 'src/generated/resources'
+	srcDir generateModMetadata
+}
+
 tasks.named('jar', Jar).configure {
     manifest {
         attributes([
@@ -269,10 +285,6 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
 }
 
-tasks.withType(GenerateModuleMetadata) {
-    enabled = false // Can't figure out how to disable the dependencies block here, and it's wrong by default (it pulls deobf deps).
-}
-
 def getChangelogLink() {
     def repo = ''
     def proc = 'git config --get remote.origin.url'.execute();
@@ -312,7 +324,8 @@ tasks.register('publishCurseForge', net.darkhax.curseforgegradle.TaskPublishCurs
         mainFile.addModLoader(splitList("${modLoaders}"))
         mainFile.addJavaVersion("Java ${javaVersion}")
         mainFile.addGameVersion("${mcVersion}")
-        mainFile.releaseType = "${releaseType}"
+		mainFile.addModLoader("NeoForge")
+        mainFile.releaseType = "${releaseType}"        
     
         if (project.hasProperty('requiredDeps')) {
             mainFile.addRequirement(splitList("${requiredDeps}"))
